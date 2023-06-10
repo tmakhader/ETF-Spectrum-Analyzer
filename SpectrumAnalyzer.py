@@ -63,6 +63,7 @@ def generate_plot():
     maxima_indices.sort(key=lambda index: fft_freq[index])
 
     # Plot the spectral distribution
+    plt.subplot(2, 1, 1)
     plt.plot(fft_freq[(fft_freq > frequency_min) & (fft_freq < frequency_max)],
              amplitude_spectrum[(fft_freq > frequency_min) & (fft_freq < frequency_max)])
     plt.plot(fft_freq[maxima_indices][(fft_freq[maxima_indices] > frequency_min) & (fft_freq[maxima_indices] < frequency_max)],
@@ -78,6 +79,47 @@ def generate_plot():
     for index in maxima_indices:
         plt.annotate(f'{fft_freq[index]:.4f}', xy=(fft_freq[index], amplitude_spectrum[index]),
                      xytext=(0, -10), textcoords='offset points', ha='center', va='top', fontsize=8, color='blue')
+
+    # Plot the stock market data and its SMA
+    plt.subplot(2, 1, 2)
+    plt.plot(prices, label='Data')
+    plt.plot(sma, label='SMA')
+    plt.xlabel('Time')
+    plt.ylabel('Price')
+    plt.title(f'Stock Market Data and SMA of {ticker} - Green Line Shows Maximum Fall')
+    plt.grid(True)
+    plt.legend()
+
+    # Find the points where the SMA and data cross
+    crosses = np.where(np.diff(np.sign(prices - sma)) != 0)[0]
+
+    # Find the adjacent crossing points with the maximum difference in y-values
+    max_difference = 0
+    max_difference_index = -1
+    for i in range(len(crosses) - 1):
+        current_cross = crosses[i]
+        next_cross = crosses[i + 1]
+        if prices[current_cross] > prices[next_cross]:
+            difference = prices[current_cross] - prices[next_cross]
+            if difference > max_difference:
+                max_difference = difference
+                max_difference_index = i
+
+    # Plot the line between the adjacent crossing points with maximum difference in y-values
+    if max_difference_index >= 0:
+        current_cross = crosses[max_difference_index]
+        next_cross = crosses[max_difference_index + 1]
+        plt.plot([current_cross, next_cross], [prices[current_cross], prices[next_cross]], 'g--')
+        plt.annotate(f'{prices[current_cross]:.2f}', xy=(current_cross, prices[current_cross]),
+                     xytext=(0, -10), textcoords='offset points', ha='center', va='top', fontsize=8, color='black')
+        plt.annotate(f'{prices[next_cross]:.2f}', xy=(next_cross, prices[next_cross]),
+                     xytext=(0, -10), textcoords='offset points', ha='center', va='top', fontsize=8, color='black')
+
+    # Calculate the average difference in values at regions of adjacent crossings where the y value of the first crossing is greater than the y value of the second crossing
+    average_diff = np.mean([prices[crosses[i]] - prices[crosses[i+1]] for i in range(len(crosses) - 1) if prices[crosses[i]] > prices[crosses[i+1]]])
+
+    # Display the average difference above the plot
+    plt.text(0.5, 1.1, f'Average Difference: {average_diff:.2f}', transform=plt.gca().transAxes, ha='center')
 
     plt.tight_layout()
     plt.show()
